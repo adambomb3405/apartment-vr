@@ -2,72 +2,74 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Apartment VR</title>
+    <title>Apartment VR - Debug</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
     <style>
-      body { margin: 0; background: #000; }
+      body { margin: 0; }
+      #status {
+        position: fixed; top: 10px; left: 10px; z-index: 999;
+        background: rgba(0,0,0,0.8); color: white;
+        font-family: monospace; font-size: 14px;
+        padding: 10px; border-radius: 6px; pointer-events: none;
+      }
     </style>
   </head>
   <body>
-    <a-scene
-      renderer="antialias: true; colorManagement: true"
-      vr-mode-ui="enabled: true"
-      loading-screen="dotsColor: white; backgroundColor: #111"
-    >
+    <div id="status">⏳ Loading model...</div>
 
-      <!-- ── CAMERA RIG ─────────────────────────────────────────────────────── -->
-      <!-- movement-controls gives you left-thumbstick locomotion on Quest      -->
-      <a-entity id="rig" movement-controls="speed: 0.1" position="0 1.6 0">
+    <a-scene renderer="antialias: true; colorManagement: true">
 
-        <a-entity
-          camera
-          position="0 0 0"
-          look-controls="pointerLockEnabled: false"
-        ></a-entity>
-
-        <!-- Right controller: point laser + trigger to teleport -->
-        <a-entity
-          id="right-hand"
-          laser-controls="hand: right"
-          teleport-controls="cameraRig: #rig; teleportOrigin: #camera; button: trigger; collisionEntities: .floor"
-          raycaster="objects: .floor; far: 20"
-        ></a-entity>
-
-        <!-- Left controller: optional laser for UI -->
-        <a-entity
-          id="left-hand"
-          laser-controls="hand: left"
-          raycaster="objects: .floor; far: 20"
-        ></a-entity>
-
+      <!-- Camera pulled back so we can see the model from outside -->
+      <a-entity id="rig" movement-controls="speed: 0.1" position="0 1.6 10">
+        <a-entity camera look-controls></a-entity>
+        <a-entity id="right-hand" laser-controls="hand: right"
+          teleport-controls="cameraRig: #rig; button: trigger; collisionEntities: .floor"
+          raycaster="objects: .floor; far: 100">
+        </a-entity>
+        <a-entity id="left-hand" laser-controls="hand: left"></a-entity>
       </a-entity>
 
-      <!-- ── YOUR APARTMENT SCAN ────────────────────────────────────────────── -->
-      <!-- 🔧 Change "apartment.gltf" to match your exact filename              -->
-      <a-entity
-        gltf-model="url(Apartment_Scan.gltf)"
-        position="0 0 0"
-        scale="1 1 1"
-      ></a-entity>
+      <!-- RED BOX at origin — if visible, A-Frame is working -->
+      <a-box position="0 1 0" color="red" width="1" height="1" depth="1"></a-box>
 
-      <!-- ── INVISIBLE FLOOR (for teleport targeting) ───────────────────────── -->
-      <a-plane
-        class="floor"
-        position="0 0 0"
-        rotation="-90 0 0"
-        width="200"
-        height="200"
-        visible="false"
-      ></a-plane>
+      <!-- Your apartment scan -->
+      <a-entity id="apt" gltf-model="url(Apartment_Scan.glb)" position="0 0 0" scale="1 1 1"></a-entity>
 
-      <!-- ── LIGHTING ───────────────────────────────────────────────────────── -->
-      <a-light type="ambient" color="#fff" intensity="1.2"></a-light>
-      <a-light type="directional" position="2 4 3" intensity="0.8"></a-light>
+      <!-- Floor for teleport -->
+      <a-plane class="floor" rotation="-90 0 0" width="500" height="500" visible="false"></a-plane>
 
-      <!-- ── SKY ───────────────────────────────────────────────────────────── -->
-      <a-sky color="#111111"></a-sky>
+      <a-light type="ambient" color="#fff" intensity="2"></a-light>
+      <a-light type="directional" position="0 10 5" intensity="1"></a-light>
+      <a-sky color="#222"></a-sky>
 
     </a-scene>
+
+    <script>
+      const status = document.getElementById('status');
+      const apt = document.getElementById('apt');
+
+      apt.addEventListener('model-loaded', (e) => {
+        const mesh = e.detail.model;
+        const box = new THREE.Box3().setFromObject(mesh);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+
+        status.style.background = 'rgba(0,130,0,0.85)';
+        status.innerHTML =
+          '✅ Model loaded!<br>' +
+          'Size: ' + size.x.toFixed(2) + ' x ' + size.y.toFixed(2) + ' x ' + size.z.toFixed(2) + '<br>' +
+          'Center: ' + center.x.toFixed(2) + ', ' + center.y.toFixed(2) + ', ' + center.z.toFixed(2);
+
+        console.log('Model size:', size);
+        console.log('Model center:', center);
+      });
+
+      apt.addEventListener('model-error', (e) => {
+        status.style.background = 'rgba(180,0,0,0.85)';
+        status.innerHTML = '❌ Model failed to load — check console';
+        console.error('Model error:', e.detail);
+      });
+    </script>
   </body>
 </html>
